@@ -226,7 +226,8 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       setState(() {
         _image = imageInfo.image;
-        _scale = imageInfo.scale;
+
+        _scale = 1.0;
 
         // NOTE: conver img  _ratio value >= 0
         _ratio = max(
@@ -253,6 +254,30 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
           viewHeight,
         );
       });
+
+      // Note: use the 1.0 as the scale then scale to the real customized scale.
+      if (imageInfo.scale!=_scale) {
+        setState(() {
+          
+          _scale = _minimumScale* max(_image.width,_image.height) / min(_image.width,_image.height);
+
+          print("realscale: $_scale");
+
+          final dx = _boundaries.width *
+              (1.0 - _scale) /
+              (_image.width * _scale * _ratio);
+          final dy = _boundaries.height *
+              (1.0 - _scale) /
+              (_image.height * _scale * _ratio);
+
+          _view = Rect.fromLTWH(
+            _view.left + dx / 2,
+            _view.top + dy / 2,
+            _view.width,
+            _view.height,
+          );
+        });
+      }
     });
     WidgetsBinding.instance.ensureVisualUpdate();
   }
@@ -267,20 +292,61 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
   }
 
   Rect _getViewInBoundaries(double scale) {
+    // print ("_getViewInBoundaries: _view ${_view.left},${_view.top},${_view.right},${_view.bottom},${_view.width},${_view.height/scale}");
+    // print ("_getViewInBoundaries: _view.size ${_view.size}");
+    // print ("_getViewInBoundaries: _area ${_area.left},${_area.top},${_area.right},${_area.bottom},${_area.width},${_area.height}");
+    // print ("_getViewInBoundaries: _area.size ${_area.size}");
+    // print ("_getViewInBoundaries: scale $scale $_startScale");
+
+
+    // var dx=max(
+    //         min(
+    //           _view.left,
+    //           _area.left * _view.width / scale,
+    //         ),
+    //         _area.right * _view.width / scale - 1.0,
+    //       );
+    // var dy=max(
+    //         min(
+    //           _view.top,
+    //           _area.top * _view.height / scale,
+    //         ),
+    //         _area.bottom * _view.height / scale - 1.0,
+    //       );
+
+    // print ("_getViewInBoundaries: max((min ${_view.left},${_area.left * _view.width / scale}) ${_area.right * _view.width /scale - 1.0})");
+    // print ("_getViewInBoundaries: max((min ${_view.top},${_area.top * _view.height / scale}) ${_area.bottom * _view.height /scale - 1.0})");
+
+    // print ("_getViewInBoundaries: dx,dy: $dx,$dy");
+    
+    // // final dx = _boundaries.width *
+    // //     (1.0 - _scale) /
+    // //     (_image.width * _scale * _ratio);
+    // // final dy = _boundaries.height *
+    // //     (1.0 - _scale) /
+    // //     (_image.height * _scale * _ratio);
+
+    // // return Rect.fromLTWH(
+    // //   _view.left + dx / 2,
+    // //   _view.top + dy / 2,
+    // //   _view.width,
+    // //   _view.height,
+    // // );
+
     return Offset(
           max(
             min(
               _view.left,
-              _area.left * _view.width / scale,
+              (_area.left + _area.width/2) * _view.width / scale,
             ),
-            _area.right * _view.width / scale - 1.0,
+            (_area.right - _area.width/2) * _view.width / scale - 1.0,
           ),
           max(
             min(
               _view.top,
-              _area.top * _view.height / scale,
+              (_area.top + _area.height/2) * _view.height / scale,
             ),
-            _area.bottom * _view.height / scale - 1.0,
+            (_area.bottom - _area.height/2) * _view.height / scale - 1.0,
           ),
         ) &
         _view.size;
@@ -291,7 +357,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
   double get _minimumScale {
     final scaleX = _boundaries.width * _area.width / (_image.width * _ratio);
     final scaleY = _boundaries.height * _area.height / (_image.height * _ratio);
-    return min(_maximumScale, max(scaleX, scaleY));
+    return min(_maximumScale, min(scaleX, scaleY));
   }
 
   void _handleScaleEnd(ScaleEndDetails details) {
